@@ -22,6 +22,13 @@ sort ${PREFNAME}.1.files > ${PREFNAME}.2.sorted
 # and remove some files/directories
 #
 # we will remove/ignore all files in the following subdirs:
+#
+# ./.git - as we dont have source files here
+# ./ipcore_dir - lots of junk in here we dont want to mess with
+# ./src/_unused* - these should be deleted from the repo ??
+# ./KickAss - unsure who has copyright/license for these files
+# ./isework - dont think these files are used anymore
+#
 IGN_PATHS="^./.git/\|^./ipcore_dir/\|^./src/_unused/\|^./src/_unused2/\|^./KickAss/\|./isework/"
 #
 cat ${PREFNAME}.2.sorted | grep -v $IGN_PATHS > ${PREFNAME}.3.trimmed
@@ -31,17 +38,18 @@ cat ${PREFNAME}.2.sorted | grep -v $IGN_PATHS > ${PREFNAME}.3.trimmed
 #diff ${PREFNAME}.2.sorted ${PREFNAME}.3.trimmed
 
 
-# output file #3 contains URLs of files to process
+# output file-#3 contains URLs of files to process
 
 # we will process each file listed in the file-#3
 #
 # processing performs the following:
 # - check see if the file extension is something that we know about
-# - thats it for now
+# - if we DO   know the file extn, save the URL in an output file for later processing,
+# - if we DONT know the file extn, save the URL in a different output file, to be reported at the end of this script.
 #
 KNOWN_TXT_EXTNS="vhd vhdl c h md asm a65 sh inc txt cfg ucf xise xdc tcl"
 KNOWN_BIN_EXTNS="pdf jpg jpeg prg png hex gif bin dat"
-KNOWN_SCR_EXTNS="Makefile makerom makeslowram test_fdisk watch-m65 vivado_wrapper run_ise record-m65"
+KNOWN_SCR_EXTNS="Makefile makerom makeslowram test_fdisk watch-m65 vivado_wrapper run_ise record-m65 vivado_timing"
 #
 cat ${PREFNAME}.3.trimmed | while read thisfile; do
   #
@@ -76,7 +84,7 @@ done;
 
 ###################################################
 ###################################################
-# At this stage, we have got a list(s) of files to process
+# At this stage, we have got a list(s) of files to process (ie file.4.* )
 ###################################################
 ###################################################
 
@@ -94,12 +102,14 @@ fi
 ###################################################
 ###################################################
 
-if [ 0 == 1 ]; then
+if [ 1 == 1 ]; then
   #
   echo "Processing the BIN's: ${KNOWN_BIN_EXTNS}"
   #
   cat ${PREFNAME}.4.bin | while read thisfile; do
-    echo "$thisfile"
+    echo -e "\n==== Processing: $thisfile"
+    #
+    echo "We will create  \"${thisfile}.txt\" containing the LICENCEHEADER"
   done
   echo " "
 fi
@@ -109,19 +119,21 @@ fi
 ###################################################
 ###################################################
 
-if [ 1 == 1 ]; then
+if [ 0 == 1 ]; then
   echo "Processing the SCR's: ${KNOWN_SCR_EXTNS}"
   #
+  # For the SCRipt files, we add the LICENCEHEADER to the top of the file,
+  # but below the hashbang (if it exists)
+  #
   cat ${PREFNAME}.4.scr | while read thisfile; do
-    echo "==== Processing: $thisfile"
+    echo -e "\n==== Processing: $thisfile"
     #
     # check for hashbang, as we want the header to go BELOW the first line
     #
     FIRSTLINE=`head -n 1 $thisfile`
-    echo "firstline=\"${FIRSTLINE}\""
     #
     if [[ "$FIRSTLINE" =~ ^#! ]] ; then
-      echo "detected hashbang"
+      echo "detected hashbang, firstline=\"${FIRSTLINE}\""
       HASHBANG="Y"
     else
       echo "no hashbang"
@@ -145,8 +157,8 @@ if [ 1 == 1 ]; then
     LICENCEHEADER_SCR="#\n# SPDX-FileCopyrightText: 2020 MEGA\n#\n# Contributors:\n# __CONTRIBUTORS__\n#\n# SPDX-License-Identifier: LGPL-3.0-or-later\n#"
     #
     # DEBUG
-    echo -e $LICENCEHEADER_SCR
-    echo "==^^ LICENCEHEADER_SCR"
+    #echo -e $LICENCEHEADER_SCR
+    #echo "==^^ LICENCEHEADER_SCR"
     #
     # write out a temporary file
     #
@@ -162,11 +174,11 @@ if [ 1 == 1 ]; then
     CONTRIBUTORS=`git log $thisfile | grep Author | sed -f ./license-parse-dedup.dat | awk '!a[$0]++' `
     #
     # DEBUG
-    echo "git log <all>:"
+    echo "git log <filename> | grep Author"
     git log $thisfile | grep Author
-    echo "and the processed:"
-    echo "$CONTRIBUTORS"
-    echo "==^^CONTRIBUTORS"
+    #echo "and the processed:"
+    #echo "$CONTRIBUTORS"
+    #echo "==^^CONTRIBUTORS"
     #
     # write out a temporary file
     #
@@ -189,6 +201,11 @@ if [ 1 == 1 ]; then
     # 3: "grep -A" says 9999 lines AFTER the matched text (ie the bottom of the file upto match)
     #    "tail -1" removes the matched line
     cat ${thisfile}.temp.header | grep -A 9999 "__CONTRIBUTORS__" | tail -n +2 >> ${thisfile}.temp
+
+    # show the newly added text
+    echo "===="
+    cat ${thisfile}.temp
+    echo "==^^ added text to the top of the file"
 
     # now place the rest of the contents of the original file into this temp-file
     #
@@ -217,3 +234,8 @@ fi
 ###################################################
 ###################################################
 ###################################################
+
+# show a warning of the files that were not processed
+#
+echo "The following files were NOT procesed:"
+cat ${PREFNAME}.4.unknown
