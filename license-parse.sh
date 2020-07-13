@@ -109,7 +109,60 @@ if [ 1 == 1 ]; then
   cat ${PREFNAME}.4.bin | while read thisfile; do
     echo -e "\n==== Processing: $thisfile"
     #
-    echo "We will create  \"${thisfile}.txt\" containing the LICENCEHEADER"
+    echo "We will create  \"${thisfile}.txt\" containing the LICENSE info"
+
+    # construct the LICENCEHEADER & LICENCEFOOTER templates (specific to BIN-files)
+    # we could use just plain text, but will use HASH prepended to each line as in the SCRs)
+    #
+    LICENCEHEADER_BIN="#\n# SPDX-FileCopyrightText: 2020 MEGA\n#\n# Contributors:"
+    LICENCEFOOTER_BIN="#\n# SPDX-License-Identifier: LGPL-3.0-or-later\n#"
+    #
+    # DEBUG
+    #echo -e   $LICENCEHEADER_BIN
+    #echo "==^^ LICENCEHEADER_BIN"
+    #echo -e   $LICENCEFOOTER_BIN
+    #echo "==^^ LICENCEFOOTER_BIN"
+
+
+    # get a list of the contributors
+    #
+    # 1. get a complete git-log of the file, use '--follow' to continue listing history beyond file-renames (git)
+    # 2. pull out the string "Author:..." of each commit (grep)
+    # 3. normalise the list where an author has multiple names and/or email addresses (sed)
+    # 4. de-duplicate the names by leaving only unique entries (awk)
+    CONTRIBUTORS=`git log --follow "$thisfile" | grep Author | sed -f ./license-parse-dedup.dat | awk '!a[$0]++' `
+    #
+    # DEBUG
+    echo "git log --follow  <filename> | grep Author"
+    git       log --follow "$thisfile" | grep Author
+    #echo "and the processed:"
+    #echo "$CONTRIBUTORS"
+    #echo "==^^CONTRIBUTORS"
+    #
+    # write out a temporary file, as I cant get SED to parse VARIABLES
+    #
+    echo -e "$CONTRIBUTORS" > "${thisfile}.temp.contrib"
+    #
+    # now, remove the leading "Author:   " in each entry, and align as appropriate
+    sed -i 's/Author: /#   /g' "${thisfile}.temp.contrib"
+    #
+
+    # now join the LICENCEHEADER, CONTRIBUTORS-file, and LICENCEFOOTER
+    echo -e $LICENCEHEADER_BIN     >  "${thisfile}.txt" # yes, overwrite if it exists
+    cat "${thisfile}.temp.contrib" >> "${thisfile}.txt"
+    echo -e $LICENCEFOOTER_BIN     >> "${thisfile}.txt"
+
+    # show the new file, and add it to git
+    echo "===="
+    cat "${thisfile}.txt"
+    echo "==^^ new file addded"
+    #
+    git add "${thisfile}.txt"
+
+    # remove temporary files
+    rm "${thisfile}.temp.contrib"
+    #rm "${thisfile}.txt"
+
   done
   echo " "
 fi
