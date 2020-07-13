@@ -132,7 +132,7 @@ if [ 1 == 1 ]; then
     # 2. pull out the string "Author:..." of each commit (grep)
     # 3. normalise the list where an author has multiple names and/or email addresses (sed)
     # 4. de-duplicate the names by leaving only unique entries (awk)
-    CONTRIBUTORS=`git log --follow "$thisfile" | grep Author | sed -f ./license-parse-dedup.dat | awk '!a[$0]++' `
+    CONTRIBUTORS=`git log --follow "$thisfile" | grep Author | sed -f ./license-parse-norm.dat | awk '!a[$0]++' `
     #
     # DEBUG
     echo "git log --follow  <filename> | grep Author"
@@ -223,24 +223,25 @@ if [ 0 == 1 ]; then
 
     # get a list of the contributors
     #
-    # 1. get a complete git-log of the file, and pull out the string "Author:..." (git grep)
-    # 2. normalise the list where an author has multiple names and/or email addresses (sed)
-    # 3. de-duplicate the names depending on the rules file (awk)
-    CONTRIBUTORS=`git log $thisfile | grep Author | sed -f ./license-parse-dedup.dat | awk '!a[$0]++' `
+    # 1. get a complete git-log of the file, use '--follow' to continue listing history beyond file-renames (git)
+    # 2. pull out the string "Author:..." of each commit (grep)
+    # 3. normalise the list where an author has multiple names and/or email addresses (sed)
+    # 4. de-duplicate the names by leaving only unique entries (awk)
+    CONTRIBUTORS=`git log --follow "$thisfile" | grep Author | sed -f ./license-parse-norm.dat | awk '!a[$0]++' `
     #
     # DEBUG
-    echo "git log <filename> | grep Author"
-    git log $thisfile | grep Author
+    echo "git log --follow  <filename> | grep Author"
+    git       log --follow "$thisfile" | grep Author
     #echo "and the processed:"
     #echo "$CONTRIBUTORS"
     #echo "==^^CONTRIBUTORS"
     #
-    # write out a temporary file
+    # write out a temporary file, as I cant get SED to parse VARIABLES
     #
-    echo -e "$CONTRIBUTORS" > ${thisfile}.temp.contrib
+    echo -e "$CONTRIBUTORS" > "${thisfile}.temp.contrib"
     #
     # now, remove the leading "Author:   " in each entry, and align as appropriate
-    sed -i 's/Author: /#   /g' ${thisfile}.temp.contrib
+    sed -i 's/Author: /#   /g' "${thisfile}.temp.contrib"
     #
 
     # now join the LICENSEHEADER with the CONTRIBUTORS
