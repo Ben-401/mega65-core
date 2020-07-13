@@ -111,7 +111,7 @@ if [ 1 == 1 ]; then
   cat ${PREFNAME}.4.bin | while read thisfile; do
     echo -e "\n==== Processing: $thisfile"
     #
-    echo "We will create  \"${thisfile}.txt\" containing the LICENSE info"
+    echo "We will create  \"${thisfile}.license\" containing the LICENSE info"
 
     # construct the LICENSEHEADER & LICENSEFOOTER templates (specific to BIN-files)
     # we could use just plain text, but will use HASH prepended to each line as in the SCRs)
@@ -150,20 +150,20 @@ if [ 1 == 1 ]; then
     #
 
     # now join the LICENSEHEADER, CONTRIBUTORS-file, and LICENSEFOOTER
-    echo -e $LICENSEHEADER_BIN     >  "${thisfile}.txt" # yes, overwrite if it exists
-    cat "${thisfile}.temp.contrib" >> "${thisfile}.txt"
-    echo -e $LICENSEFOOTER_BIN     >> "${thisfile}.txt"
+    echo -e $LICENSEHEADER_BIN     >  "${thisfile}.license" # yes, overwrite if it exists
+    cat "${thisfile}.temp.contrib" >> "${thisfile}.license"
+    echo -e $LICENSEFOOTER_BIN     >> "${thisfile}.license"
 
     # show the new file, and add it to git
     echo "===="
-    cat "${thisfile}.txt"
+    cat "${thisfile}.license"
     echo "==^^ new file addded"
     #
-    git add "${thisfile}.txt"
+    git add "${thisfile}.license"
 
     # remove temporary files
     rm "${thisfile}.temp.contrib"
-    #rm "${thisfile}.txt"
+    #rm "${thisfile}.license"
 
   done
   echo " "
