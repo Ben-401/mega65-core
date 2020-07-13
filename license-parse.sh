@@ -14,22 +14,24 @@ rm -rf ${PREFNAME}.4.*
 
 # generate a list of files found in this repo
 # get all files, and then we then remove some below
-find . -name "*" -type f >> ${PREFNAME}.1.files
+find . -name "*" -type f > ${PREFNAME}.1.files
 
 # now sort the list
 sort ${PREFNAME}.1.files > ${PREFNAME}.2.sorted
 
 # and remove some files/directories
 #
-# we will remove/ignore all files in the following subdirs:
+# we will remove/ignore all files in the following locations:
 #
-# ./.git - as we dont have source files here
-# ./ipcore_dir - lots of junk in here we dont want to mess with
-# ./src/_unused* - these should be deleted from the repo ??
-# ./KickAss - unsure who has copyright/license for these files
-# ./isework - dont think these files are used anymore
+# ./.git/ - as we dont have source files here
+# ./ipcore_dir/ - lots of junk in here we dont want to mess with
+# ./src/_unused*/ - these should be deleted from the repo ??
+# ./KickAss/ - unsure who has copyright/license for these files
+# ./isework/ - dont think these files are used anymore
+# ./license-parse* - the files making up *this* script
+# ./${PREFNAME}* - the temp files created by *this* script
 #
-IGN_PATHS="^./.git/\|^./ipcore_dir/\|^./src/_unused/\|^./src/_unused2/\|^./KickAss/\|./isework/"
+IGN_PATHS="^./.git/\|^./ipcore_dir/\|^./src/_unused/\|^./src/_unused2/\|^./KickAss/\|./isework/\|license-parse\|${PREFNAME}"
 #
 cat ${PREFNAME}.2.sorted | grep -v $IGN_PATHS > ${PREFNAME}.3.trimmed
 #
