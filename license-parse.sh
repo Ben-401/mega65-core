@@ -64,15 +64,15 @@ cat ${PREFNAME}.3.trimmed | while read thisfile; do
   # check if this file has a known GOOD extension
   #
   if   [[ "$KNOWN_TXT_EXTNS" =~ $thisextension ]]; then
-    #echo "YES, is a TXT, will need to check if a LICENCEHEADER already exists"
+    #echo "YES, is a TXT, will need to check if a LICENSEHEADER already exists"
     echo $thisfile >> ${PREFNAME}.4.txt
     :
   elif [[ "$KNOWN_BIN_EXTNS" =~ $thisextension ]]; then
-    #echo "YES, is a BIN, but need to simply create a file with filename.license containing the LICENCEHEADER instead"
+    #echo "YES, is a BIN, but need to simply create a file with filename.license containing the LICENSEHEADER instead"
     echo $thisfile >> ${PREFNAME}.4.bin
     :
   elif [[ "$KNOWN_SCR_EXTNS" =~ $thisextension ]]; then
-    #echo "YES, is a SCR, but need to insert LICENCEHEADER after the hashbang"
+    #echo "YES, is a SCR, but need to insert LICENSEHEADER after the hashbang (if HASHBANG exists)"
     echo $thisfile >> ${PREFNAME}.4.scr
     :
   else
@@ -113,17 +113,17 @@ if [ 1 == 1 ]; then
     #
     echo "We will create  \"${thisfile}.txt\" containing the LICENSE info"
 
-    # construct the LICENCEHEADER & LICENCEFOOTER templates (specific to BIN-files)
+    # construct the LICENSEHEADER & LICENSEFOOTER templates (specific to BIN-files)
     # we could use just plain text, but will use HASH prepended to each line as in the SCRs)
     #
-    LICENCEHEADER_BIN="#\n# SPDX-FileCopyrightText: 2020 MEGA\n#\n# Contributors:"
-    LICENCEFOOTER_BIN="#\n# SPDX-License-Identifier: LGPL-3.0-or-later\n#"
+    LICENSEHEADER_BIN="#\n# SPDX-FileCopyrightText: 2020 MEGA\n#\n# Contributors:"
+    LICENSEFOOTER_BIN="#\n# SPDX-License-Identifier: LGPL-3.0-or-later\n#"
     #
     # DEBUG
-    #echo -e   $LICENCEHEADER_BIN
-    #echo "==^^ LICENCEHEADER_BIN"
-    #echo -e   $LICENCEFOOTER_BIN
-    #echo "==^^ LICENCEFOOTER_BIN"
+    #echo -e   $LICENSEHEADER_BIN
+    #echo "==^^ LICENSEHEADER_BIN"
+    #echo -e   $LICENSEFOOTER_BIN
+    #echo "==^^ LICENSEFOOTER_BIN"
 
 
     # get a list of the contributors
@@ -149,10 +149,10 @@ if [ 1 == 1 ]; then
     sed -i 's/Author: /#   /g' "${thisfile}.temp.contrib"
     #
 
-    # now join the LICENCEHEADER, CONTRIBUTORS-file, and LICENCEFOOTER
-    echo -e $LICENCEHEADER_BIN     >  "${thisfile}.txt" # yes, overwrite if it exists
+    # now join the LICENSEHEADER, CONTRIBUTORS-file, and LICENSEFOOTER
+    echo -e $LICENSEHEADER_BIN     >  "${thisfile}.txt" # yes, overwrite if it exists
     cat "${thisfile}.temp.contrib" >> "${thisfile}.txt"
-    echo -e $LICENCEFOOTER_BIN     >> "${thisfile}.txt"
+    echo -e $LICENSEFOOTER_BIN     >> "${thisfile}.txt"
 
     # show the new file, and add it to git
     echo "===="
@@ -177,7 +177,7 @@ fi
 if [ 0 == 1 ]; then
   echo "Processing the SCR's: ${KNOWN_SCR_EXTNS}"
   #
-  # For the SCRipt files, we add the LICENCEHEADER to the top of the file,
+  # For the SCRipt files, we add the LICENSEHEADER to the top of the file,
   # but below the hashbang (if it exists)
   #
   cat ${PREFNAME}.4.scr | while read thisfile; do
@@ -201,23 +201,23 @@ if [ 0 == 1 ]; then
     echo "===="
 
     # for scripts with hashbang, keep the first line
-    # then add LICENCEHEADER
+    # then add LICENSEHEADER
     if [[ $HASHBANG == "Y" ]] ; then
       #
       echo $FIRSTLINE > ${thisfile}.temp
     fi
 
-    # construct the LICENCEHEADER template (specific to SCR-files, ie use HASH for comment)
+    # construct the LICENSEHEADER template (specific to SCR-files, ie use HASH for comment)
     #
-    LICENCEHEADER_SCR="#\n# SPDX-FileCopyrightText: 2020 MEGA\n#\n# Contributors:\n# __CONTRIBUTORS__\n#\n# SPDX-License-Identifier: LGPL-3.0-or-later\n#"
+    LICENSEHEADER_SCR="#\n# SPDX-FileCopyrightText: 2020 MEGA\n#\n# Contributors:\n# __CONTRIBUTORS__\n#\n# SPDX-License-Identifier: LGPL-3.0-or-later\n#"
     #
     # DEBUG
-    #echo -e $LICENCEHEADER_SCR
-    #echo "==^^ LICENCEHEADER_SCR"
+    #echo   -e $LICENSEHEADER_SCR
+    #echo "==^^ LICENSEHEADER_SCR"
     #
     # write out a temporary file
     #
-    echo -e $LICENCEHEADER_SCR > ${thisfile}.temp.header
+    echo -e $LICENSEHEADER_SCR > ${thisfile}.temp.header
 
 
 
@@ -243,10 +243,10 @@ if [ 0 == 1 ]; then
     sed -i 's/Author: /#   /g' ${thisfile}.temp.contrib
     #
 
-    # now join the LICENCEHEADER with the CONTRIBUTORS
-    # 1. top of LICENCEHEADER downto "__CONTRIBUTORS__"
+    # now join the LICENSEHEADER with the CONTRIBUTORS
+    # 1. top of LICENSEHEADER downto "__CONTRIBUTORS__"
     # 2. contents of CONTRIBUTORS
-    # 3. botton of LICENCEHEADER starting after "__CONTRIBUTORS__"
+    # 3. botton of LICENSEHEADER starting after "__CONTRIBUTORS__"
     #
     # 1: "grep -B" says 9999 lines BEFORE the matched text (ie the top of the file downto match)
     #    "head -1" removes the matched line
