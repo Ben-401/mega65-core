@@ -49,9 +49,9 @@ cat ${PREFNAME}.2.sorted | grep -v $IGN_PATHS > ${PREFNAME}.3.trimmed
 # - if we DO   know the file extn, save the URL in an output file for later processing,
 # - if we DONT know the file extn, save the URL in a different output file, to be reported at the end of this script.
 #
-KNOWN_TXT_EXTNS="vhd vhdl c h md asm a65 sh inc txt cfg ucf xise xdc tcl"
+KNOWN_TXT_EXTNS="vhd vhdl c h md asm a65 inc txt cfg ucf xise xdc tcl"
 KNOWN_BIN_EXTNS="pdf jpg jpeg prg png hex gif bin dat"
-KNOWN_SCR_EXTNS="Makefile makerom makeslowram test_fdisk watch-m65 vivado_wrapper run_ise record-m65 vivado_timing"
+KNOWN_SCR_EXTNS="sh Makefile makerom makeslowram test_fdisk watch-m65 vivado_wrapper run_ise record-m65 vivado_timing"
 #
 cat ${PREFNAME}.3.trimmed | while read thisfile; do
   #
@@ -65,21 +65,21 @@ cat ${PREFNAME}.3.trimmed | while read thisfile; do
   #
   if   [[ "$KNOWN_TXT_EXTNS" =~ $thisextension ]]; then
     #echo "YES, is a TXT, will need to check if a LICENSEHEADER already exists"
-    echo $thisfile >> ${PREFNAME}.4.txt
+    echo "${thisfile}" >> ${PREFNAME}.4.txt
     :
   elif [[ "$KNOWN_BIN_EXTNS" =~ $thisextension ]]; then
     #echo "YES, is a BIN, but need to simply create a file with filename.license containing the LICENSEHEADER instead"
-    echo $thisfile >> ${PREFNAME}.4.bin
+    echo "${thisfile}" >> ${PREFNAME}.4.bin
     :
   elif [[ "$KNOWN_SCR_EXTNS" =~ $thisextension ]]; then
     #echo "YES, is a SCR, but need to insert LICENSEHEADER after the hashbang (if HASHBANG exists)"
-    echo $thisfile >> ${PREFNAME}.4.scr
+    echo "${thisfile}" >> ${PREFNAME}.4.scr
     :
   else
     echo "WARNING - this is a file we dont know what to do with, and we will NOT process it"
-    echo "${thisfile} basename=$thisbasename extension=$thisextension filename=$thisfilename"
+    echo "${thisfile} basename=${thisbasename} extension=${thisextension} filename=${thisfilename}"
     echo " "
-    echo $thisfile >> ${PREFNAME}.4.unknown
+    echo "${thisfile}" >> ${PREFNAME}.4.unknown
   fi
   #
 done;
@@ -94,7 +94,7 @@ if [ 0 == 1 ]; then
   echo "Processing the TXT's: ${KNOWN_TXT_EXTNS}"
   #
   cat ${PREFNAME}.4.txt | while read thisfile; do
-    echo "$thisfile"
+    echo "${thisfile}"
   done
   echo " "
 fi
@@ -104,12 +104,12 @@ fi
 ###################################################
 ###################################################
 
-if [ 1 == 1 ]; then
+if [ 0 == 1 ]; then
   #
   echo "Processing the BIN's: ${KNOWN_BIN_EXTNS}"
   #
   cat ${PREFNAME}.4.bin | while read thisfile; do
-    echo -e "\n==== Processing: $thisfile"
+    echo -e "\n==== Processing: ${thisfile}"
     #
     echo "We will create  \"${thisfile}.license\" containing the LICENSE info"
 
@@ -132,11 +132,11 @@ if [ 1 == 1 ]; then
     # 2. pull out the string "Author:..." of each commit (grep)
     # 3. normalise the list where an author has multiple names and/or email addresses (sed)
     # 4. de-duplicate the names by leaving only unique entries (awk)
-    CONTRIBUTORS=`git log --follow "$thisfile" | grep Author | sed -f ./license-parse-norm.dat | awk '!a[$0]++' `
+    CONTRIBUTORS=`git log --follow "${thisfile}" | grep Author | sed -f ./license-parse-norm.dat | awk '!a[$0]++' `
     #
     # DEBUG
-    echo "git log --follow  <filename> | grep Author"
-    git       log --follow "$thisfile" | grep Author
+    echo "git log --follow  <filename>   | grep Author"
+    git       log --follow "${thisfile}" | grep Author
     #echo "and the processed:"
     #echo "$CONTRIBUTORS"
     #echo "==^^CONTRIBUTORS"
@@ -165,6 +165,8 @@ if [ 1 == 1 ]; then
     rm "${thisfile}.temp.contrib"
     #rm "${thisfile}.license"
 
+    echo "==== File done."
+
   done
   echo " "
 fi
@@ -174,51 +176,47 @@ fi
 ###################################################
 ###################################################
 
-if [ 0 == 1 ]; then
+if [ 1 == 1 ]; then
+  #
   echo "Processing the SCR's: ${KNOWN_SCR_EXTNS}"
   #
   # For the SCRipt files, we add the LICENSEHEADER to the top of the file,
   # but below the hashbang (if it exists)
   #
   cat ${PREFNAME}.4.scr | while read thisfile; do
-    echo -e "\n==== Processing: $thisfile"
+    echo -e "\n==== Processing: ${thisfile}"
+
+    # construct the LICENSEHEADER & LICENSEFOOTER templates (specific to SCR-files)
+    # seems HASH can be used for the comment as files are python/bash/etc
     #
+    LICENSEHEADER_SCR="#\n# SPDX-FileCopyrightText: 2020 MEGA\n#\n# Contributors:"
+    LICENSEFOOTER_SCR="#\n# SPDX-License-Identifier: LGPL-3.0-or-later\n#\n" # has extra CR
+    #
+    # DEBUG
+    #echo -e   $LICENSEHEADER_SCR
+    #echo "==^^ LICENSEHEADER_SCR"
+    #echo -e   $LICENSEFOOTER_SCR
+    #echo "==^^ LICENSEFOOTER_SCR"
+
     # check for hashbang, as we want the header to go BELOW the first line
     #
-    FIRSTLINE=`head -n 1 $thisfile`
+    FIRSTLINE=`head -n 1 ${thisfile}`
     #
     if [[ "$FIRSTLINE" =~ ^#! ]] ; then
       echo "detected hashbang, firstline=\"${FIRSTLINE}\""
       HASHBANG="Y"
+      echo "$FIRSTLINE" >  "${thisfile}.temp"
+      echo ""           >> "${thisfile}.temp" # add a break after the HASHBANG
     else
       echo "no hashbang"
       HASHBANG="N"
+      rm -f "${thisfile}.temp"
     fi
     #
     # DEBUG
-    #head $thisfile
+    #head "${thisfile}"
     #
     echo "===="
-
-    # for scripts with hashbang, keep the first line
-    # then add LICENSEHEADER
-    if [[ $HASHBANG == "Y" ]] ; then
-      #
-      echo $FIRSTLINE > ${thisfile}.temp
-    fi
-
-    # construct the LICENSEHEADER template (specific to SCR-files, ie use HASH for comment)
-    #
-    LICENSEHEADER_SCR="#\n# SPDX-FileCopyrightText: 2020 MEGA\n#\n# Contributors:\n# __CONTRIBUTORS__\n#\n# SPDX-License-Identifier: LGPL-3.0-or-later\n#"
-    #
-    # DEBUG
-    #echo   -e $LICENSEHEADER_SCR
-    #echo "==^^ LICENSEHEADER_SCR"
-    #
-    # write out a temporary file
-    #
-    echo -e $LICENSEHEADER_SCR > ${thisfile}.temp.header
-
 
 
     # get a list of the contributors
@@ -230,8 +228,8 @@ if [ 0 == 1 ]; then
     CONTRIBUTORS=`git log --follow "$thisfile" | grep Author | sed -f ./license-parse-norm.dat | awk '!a[$0]++' `
     #
     # DEBUG
-    echo "git log --follow  <filename> | grep Author"
-    git       log --follow "$thisfile" | grep Author
+    echo "git log --follow  <filename>   | grep Author"
+    git       log --follow "${thisfile}" | grep Author
     #echo "and the processed:"
     #echo "$CONTRIBUTORS"
     #echo "==^^CONTRIBUTORS"
@@ -244,41 +242,31 @@ if [ 0 == 1 ]; then
     sed -i 's/Author: /#   /g' "${thisfile}.temp.contrib"
     #
 
-    # now join the LICENSEHEADER with the CONTRIBUTORS
-    # 1. top of LICENSEHEADER downto "__CONTRIBUTORS__"
-    # 2. contents of CONTRIBUTORS
-    # 3. botton of LICENSEHEADER starting after "__CONTRIBUTORS__"
+    # now join the LICENSEHEADER, CONTRIBUTORS-file, and LICENSEFOOTER
+    echo -e $LICENSEHEADER_SCR     >> "${thisfile}.temp" # may already contain HASHBANG (if it existed)
+    cat "${thisfile}.temp.contrib" >> "${thisfile}.temp"
+    echo -e $LICENSEFOOTER_SCR     >> "${thisfile}.temp"
     #
-    # 1: "grep -B" says 9999 lines BEFORE the matched text (ie the top of the file downto match)
-    #    "head -1" removes the matched line
-    cat ${thisfile}.temp.header | grep -B 9999 "__CONTRIBUTORS__" | head -n -1 >> ${thisfile}.temp
-    # 2: all of the contributors
-    cat ${thisfile}.temp.contrib >> ${thisfile}.temp
-    # 3: "grep -A" says 9999 lines AFTER the matched text (ie the bottom of the file upto match)
-    #    "tail -1" removes the matched line
-    cat ${thisfile}.temp.header | grep -A 9999 "__CONTRIBUTORS__" | tail -n +2 >> ${thisfile}.temp
+    # and place the rest of the contents of the original file into this temp-file
+    if [[ $HASHBANG == "Y" ]] ; then
+      # "tail -n +2" processes from line#2 onwards (ie after the HASHBANG)
+      cat "${thisfile}" | tail -n +2 >> "${thisfile}.temp"
+    else
+      cat "${thisfile}"              >> "${thisfile}.temp"
+    fi
+
+    # and now replace the original file with the temp file, and add to git
+    mv "${thisfile}.temp" "${thisfile}"
+    git add "${thisfile}"
 
     # show the newly added text
     echo "===="
-    cat ${thisfile}.temp
-    echo "==^^ added text to the top of the file"
-
-    # now place the rest of the contents of the original file into this temp-file
-    #
-    # for the SCR-files with HASHBANG, we have already put in the first line, so just lines 2-onwards
-    if [[ $HASHBANG == "Y" ]] ; then
-      cat ${thisfile} | tail -n +2 >> ${thisfile}.temp
-    else
-      cat ${thisfile}              >> ${thisfile}.temp
-    fi
-
-    # and now replace the original file with the temp file
-    mv ${thisfile}.temp ${thisfile}
-    #rm ${thisfile}.temp
+    git diff --cached "${thisfile}"
 
     # remove temporary files
-    rm ${thisfile}.temp.header
-    rm ${thisfile}.temp.contrib
+    rm "${thisfile}.temp.contrib"
+
+    echo "==== File done."
 
   done
   echo " "
