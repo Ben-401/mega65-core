@@ -28,10 +28,12 @@ sort ${PREFNAME}.1.files > ${PREFNAME}.2.sorted
 # ./src/_unused*/ - these should be deleted from the repo ??
 # ./KickAss/ - unsure who has copyright/license for these files
 # ./isework/ - dont think these files are used anymore
+#
 # ./license-parse* - the files making up *this* script
 # ./${PREFNAME}* - the temp files created by *this* script
+# ./LICENSES/ - we dont license a license
 #
-IGN_PATHS="^./.git/\|^./ipcore_dir/\|^./src/_unused/\|^./src/_unused2/\|^./KickAss/\|./isework/\|license-parse\|${PREFNAME}"
+IGN_PATHS="^./.git/\|^./ipcore_dir/\|^./src/_unused/\|^./src/_unused2/\|^./KickAss/\|./isework/\|license-parse\|${PREFNAME}\|./LICENSES/"
 #
 cat ${PREFNAME}.2.sorted | grep -v $IGN_PATHS > ${PREFNAME}.3.trimmed
 #
@@ -49,9 +51,12 @@ cat ${PREFNAME}.2.sorted | grep -v $IGN_PATHS > ${PREFNAME}.3.trimmed
 # - if we DO   know the file extn, save the URL in an output file for later processing,
 # - if we DONT know the file extn, save the URL in a different output file, to be reported at the end of this script.
 #
-KNOWN_TXT_EXTNS="vhd vhdl c h md asm a65 inc txt cfg ucf xise xdc tcl"
+# NOTE that for the file extn's that we DO know about,
+# we will coursely grade them into sub categories for later processing.
+#
+KNOWN_TXT_EXTNS="vhd vhdl c h md asm a65 inc txt cfg ucf xise"
 KNOWN_BIN_EXTNS="pdf jpg jpeg prg png hex gif bin dat"
-KNOWN_SCR_EXTNS="sh Makefile makerom makeslowram test_fdisk watch-m65 vivado_wrapper run_ise record-m65 vivado_timing"
+KNOWN_SCR_EXTNS="sh Makefile makerom makeslowram test_fdisk watch-m65 vivado_wrapper run_ise record-m65 vivado_timing xdc tcl"
 #
 cat ${PREFNAME}.3.trimmed | while read thisfile; do
   #
