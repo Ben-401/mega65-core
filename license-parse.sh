@@ -1,5 +1,14 @@
 #!/bin/bash
 
+#
+# SPDX-FileCopyrightText: 2020 MEGA
+#
+# Contributors:
+#   Ben-401 <ben.0x0401@gmail.com>
+#
+# SPDX-License-Identifier: LGPL-3.0-or-later
+#
+
 # This script is intended to automate the implementation of the REUSE specification
 # (ie by adding copyright and license information)
 # to each file in the mega65-core repo.
