@@ -11,6 +11,7 @@ rm -rf ${PREFNAME}.1.files
 rm -rf ${PREFNAME}.2.*
 rm -rf ${PREFNAME}.3.*
 rm -rf ${PREFNAME}.4.*
+rm -rf ${PREFNAME}.5.*
 
 # generate a list of files found in this repo
 # get all files, and then we then remove some below
@@ -54,29 +55,29 @@ cat ${PREFNAME}.2.sorted | grep -v $IGN_PATHS > ${PREFNAME}.3.trimmed
 # NOTE that for the file extn's that we DO know about,
 # we will coursely grade them into sub categories for later processing.
 #
-KNOWN_TXT_EXTNS="vhd vhdl c h md asm a65 inc txt cfg ucf xise"
-KNOWN_BIN_EXTNS="pdf jpg jpeg prg png hex gif bin dat"
-KNOWN_SCR_EXTNS="sh Makefile makerom makeslowram test_fdisk watch-m65 vivado_wrapper run_ise record-m65 vivado_timing xdc tcl"
+KNOWN_TXT_EXTNS=" vhd vhdl c h v vh asm a65 inc s "
+KNOWN_BIN_EXTNS=" pdf jpg jpeg prg png hex gif bin dat md "
+KNOWN_SCR_EXTNS=" sh Makefile makerom makeslowram test_fdisk watch-m65 vivado_wrapper run_ise record-m65 vivado_timing xdc tcl "
 #
 cat ${PREFNAME}.3.trimmed | while read thisfile; do
   #
   # find the extn of this file
   #
-  thisbasename=$(basename -- "$thisfile")
+  thisbasename=$(basename -- "${thisfile}")
   thisextension="${thisbasename##*.}"
   thisfilename="${thisbasename%.*}"
   #
   # check if this file has a known GOOD extension
   #
-  if   [[ "$KNOWN_TXT_EXTNS" =~ $thisextension ]]; then
+  if   [[ "$KNOWN_TXT_EXTNS" =~ " ${thisextension} " ]]; then
     #echo "YES, is a TXT, will need to check if a LICENSEHEADER already exists"
     echo "${thisfile}" >> ${PREFNAME}.4.txt
     :
-  elif [[ "$KNOWN_BIN_EXTNS" =~ $thisextension ]]; then
+  elif [[ "$KNOWN_BIN_EXTNS" =~ " ${thisextension} " ]]; then
     #echo "YES, is a BIN, but need to simply create a file with filename.license containing the LICENSEHEADER instead"
     echo "${thisfile}" >> ${PREFNAME}.4.bin
     :
-  elif [[ "$KNOWN_SCR_EXTNS" =~ $thisextension ]]; then
+  elif [[ "$KNOWN_SCR_EXTNS" =~ " ${thisextension} " ]]; then
     #echo "YES, is a SCR, but need to insert LICENSEHEADER after the hashbang (if HASHBANG exists)"
     echo "${thisfile}" >> ${PREFNAME}.4.scr
     :
@@ -84,7 +85,7 @@ cat ${PREFNAME}.3.trimmed | while read thisfile; do
     echo "WARNING - this is a file we dont know what to do with, and we will NOT process it"
     echo "${thisfile} basename=${thisbasename} extension=${thisextension} filename=${thisfilename}"
     echo " "
-    echo "${thisfile}" >> ${PREFNAME}.4.unknown
+    echo "${thisfile}" >> ${PREFNAME}.4.unk
   fi
   #
 done;
@@ -109,14 +110,16 @@ fi
 ###################################################
 ###################################################
 
-if [ 0 == 1 ]; then
+if [ 1 == 1 ]; then #KNOWN_BIN_EXTNS
   #
   echo "Processing the BIN's: ${KNOWN_BIN_EXTNS}"
   #
   cat ${PREFNAME}.4.bin | while read thisfile; do
+    #
     echo -e "\n==== Processing: ${thisfile}"
     #
-    echo "We will create  \"${thisfile}.license\" containing the LICENSE info"
+    # For the BIN-files, we add a "filename.license"-file containing the LICENSE info
+    #
 
     # construct the LICENSEHEADER & LICENSEFOOTER templates (specific to BIN-files)
     # we could use just plain text, but will use HASH prepended to each line as in the SCRs)
@@ -124,12 +127,13 @@ if [ 0 == 1 ]; then
     LICENSEHEADER_BIN="#\n# SPDX-FileCopyrightText: 2020 MEGA\n#\n# Contributors:"
     LICENSEFOOTER_BIN="#\n# SPDX-License-Identifier: LGPL-3.0-or-later\n#"
     #
-    # DEBUG
-    #echo -e   $LICENSEHEADER_BIN
-    #echo "==^^ LICENSEHEADER_BIN"
-    #echo -e   $LICENSEFOOTER_BIN
-    #echo "==^^ LICENSEFOOTER_BIN"
 
+    # check if the file already has some kind of license/copyright
+    if [[ "$(grep -i 'copyright\|licence' ${thisfile} | wc -l)" -ne "0" ]]; then
+      echo    "${thisfile} has some kind of existing copyright/license"
+      echo "${thisfile}" >> ${PREFNAME}.5.hasCopyLic
+    fi
+    #
 
     # get a list of the contributors
     #
@@ -159,29 +163,33 @@ if [ 0 == 1 ]; then
     cat "${thisfile}.temp.contrib" >> "${thisfile}.license"
     echo -e $LICENSEFOOTER_BIN     >> "${thisfile}.license"
 
-    # show the new file, and add it to git
-    echo "===="
-    cat "${thisfile}.license"
-    echo "==^^ new file addded"
-    #
+    # add it to git
     git add "${thisfile}.license"
+
+    # show the newly added text
+    echo "===="
+    git diff --cached "${thisfile}.license"
 
     # remove temporary files
     rm "${thisfile}.temp.contrib"
-    #rm "${thisfile}.license"
+
+    git reset "${thisfile}.license"
+    rm -f     "${thisfile}.license"
 
     echo "==== File done."
-
+    #
   done
+
   echo " "
-fi
+  #
+fi #KNOWN_BIN_EXTNS
 
 ###################################################
 ###################################################
 ###################################################
 ###################################################
 
-if [ 1 == 1 ]; then
+if [ 1 == 1 ]; then #KNOWN_SCR_EXTNS
   #
   echo "Processing the SCR's: ${KNOWN_SCR_EXTNS}"
   #
@@ -189,19 +197,24 @@ if [ 1 == 1 ]; then
   # but below the hashbang (if it exists)
   #
   cat ${PREFNAME}.4.scr | while read thisfile; do
+    #
     echo -e "\n==== Processing: ${thisfile}"
+    #
+    # For the SCR-files, we append the LICENSE-info to the top of the file,
+    # but below the HASHBANG (if it exists)
 
     # construct the LICENSEHEADER & LICENSEFOOTER templates (specific to SCR-files)
     # seems HASH can be used for the comment as files are python/bash/etc
     #
     LICENSEHEADER_SCR="#\n# SPDX-FileCopyrightText: 2020 MEGA\n#\n# Contributors:"
     LICENSEFOOTER_SCR="#\n# SPDX-License-Identifier: LGPL-3.0-or-later\n#\n" # has extra CR
+
+    # check if the file already has some kind of license/copyright
+    if [[ "$(grep -i 'copyright\|licence' ${thisfile} | wc -l)" -ne "0" ]]; then
+      echo    "${thisfile} has some kind of existing copyright/license"
+      echo "${thisfile}" >> ${PREFNAME}.5.hasCopyLic
+    fi
     #
-    # DEBUG
-    #echo -e   $LICENSEHEADER_SCR
-    #echo "==^^ LICENSEHEADER_SCR"
-    #echo -e   $LICENSEFOOTER_SCR
-    #echo "==^^ LICENSEFOOTER_SCR"
 
     # check for hashbang, as we want the header to go BELOW the first line
     #
@@ -271,13 +284,20 @@ if [ 1 == 1 ]; then
     # remove temporary files
     rm "${thisfile}.temp.contrib"
 
+    git reset    "${thisfile}"
+    git checkout "${thisfile}"
+
     echo "==== File done."
 
   done
+  #
   echo " "
 
+  #
+fi #KNOWN_SCR_EXTNS
 
-fi
+echo " "
+echo "We have finished processing"
 
 ###################################################
 ###################################################
@@ -286,5 +306,27 @@ fi
 
 # show a warning of the files that were not processed
 #
-echo "The following files were NOT procesed:"
-cat ${PREFNAME}.4.unknown
+echo "========"
+echo "The following files were NOT procesed as their file-extn was NOT known:"
+echo "from: ${PREFNAME}.4.unk"
+cat        "${PREFNAME}.4.unk"
+
+
+echo "========"
+echo "The following files were NOT procesed as their file-extn was NOT known:"
+echo "from: ${PREFNAME}.4.txt.unk"
+cat        "${PREFNAME}.4.txt.unk"
+
+
+echo "========"
+echo "WARNING, The following files may have an existing copyright/license."
+echo "WARNING, Please check the validity of the MEGA65 copyright/licence before commit"
+echo "from: ${PREFNAME}.5.hasCopyLic"
+cat        "${PREFNAME}.5.hasCopyLic"
+
+
+echo ""
+echo "The Ende."
+
+
+
