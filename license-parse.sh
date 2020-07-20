@@ -1,7 +1,72 @@
 #!/bin/bash
 
 # This script is intended to automate the implementation of the REUSE specification
-# to the files in the mega65-core repo,
+# (ie by adding copyright and license information)
+# to each file in the mega65-core repo.
+
+# This script has only one function
+#
+function FN_processFile {
+  #
+  echo "1=$1 2=$2 3=$3 4=$4"
+  FN_THISFILE=$1
+  LICENSEHEADER_XXX="$2"
+  LICENSEFOOTER_XXX="$3"
+  LICENSECOMMEN_XXX="$4"
+
+  # get a list of the contributors
+  #
+  # 1. get a complete git-log of the file, use '--follow' to continue listing history beyond file-renames (git)
+  # 2. pull out the string "Author:..." of each commit (grep)
+  # 3. normalise the list where an author has multiple names and/or email addresses (sed)
+  # 4. de-duplicate the names by leaving only unique entries (awk)
+  CONTRIBUTORS=`git log --follow "${FN_THISFILE}" | grep Author | sed -f ./license-parse-norm.dat | awk '!a[$0]++' `
+  #
+  # DEBUG
+#  echo "git log --follow  <filename>      | grep Author"
+#  git       log --follow "${FN_THISFILE}" | grep Author
+  #echo "and the processed:"
+  #echo "$CONTRIBUTORS"
+  #echo "==^^CONTRIBUTORS"
+  #
+  # write out a temporary file, as I cant get SED to parse VARIABLES
+  #
+  echo -e "$CONTRIBUTORS" > "${FN_THISFILE}.temp.contrib"
+  #
+  # now, remove the leading "Author:   " in each entry, and align as appropriate
+  sed -i "s,Author: ,${LICENSECOMMEN_XXX}  ,g" "${FN_THISFILE}.temp.contrib"
+  #
+
+  # now join the LICENSEHEADER, CONTRIBUTORS-file, and LICENSEFOOTER
+  echo -e ${LICENSEHEADER_XXX}      >  "${FN_THISFILE}.temp" # yes, overwrite if it exists
+  cat "${FN_THISFILE}.temp.contrib" >> "${FN_THISFILE}.temp"
+  echo -e ${LICENSEFOOTER_XXX}      >> "${FN_THISFILE}.temp"
+  #
+  # and place the rest of the contents of the original file into this temp-file
+  cat "${thisfile}"                 >> "${FN_THISFILE}.temp"
+
+  # and now replace the original file with the temp file, and add to git
+  mv "${thisfile}.temp" "${thisfile}"
+  git add "${thisfile}"
+
+  # show the newly added text
+  echo "===="
+  git diff --cached "${thisfile}"
+
+  # remove temporary files
+  rm "${thisfile}.temp.contrib"
+
+  git reset    "${thisfile}"
+  git checkout "${thisfile}"
+
+
+  echo "==== File done."
+
+  #
+}
+
+
+# THE MAIN SCRIPT/CODE IS BELOW
 
 # we add a prefix to each of the output files (to group them together)
 PREFNAME="LICPARSE"
@@ -71,6 +136,7 @@ cat ${PREFNAME}.3.trimmed | while read thisfile; do
   #
   if   [[ "$KNOWN_TXT_EXTNS" =~ " ${thisextension} " ]]; then
     #echo "YES, is a TXT, will need to check if a LICENSEHEADER already exists"
+    #echo "Will also need to consider file-extn to use the correct 'comment'-character(s)"
     echo "${thisfile}" >> ${PREFNAME}.4.txt
     :
   elif [[ "$KNOWN_BIN_EXTNS" =~ " ${thisextension} " ]]; then
@@ -90,20 +156,139 @@ cat ${PREFNAME}.3.trimmed | while read thisfile; do
   #
 done;
 
+# DEBUG, print some stats
+NUMTXT="$(cat ${PREFNAME}.4.txt | wc -l)" && echo "Number of TXT: ${NUMTXT} "
+NUMBIN="$(cat ${PREFNAME}.4.bin | wc -l)" && echo "Number of BIN: ${NUMBIN} "
+NUMSCR="$(cat ${PREFNAME}.4.scr | wc -l)" && echo "Number of SCR: ${NUMSCR} "
+NUMUNK="$(cat ${PREFNAME}.4.unk | wc -l)" && echo "Number of UNK: ${NUMUNK} "
+echo " "
+
 ###################################################
 ###################################################
 # At this stage, we have got a list(s) of files to process (ie file.4.* )
 ###################################################
 ###################################################
 
-if [ 0 == 1 ]; then
-  echo "Processing the TXT's: ${KNOWN_TXT_EXTNS}"
+if [ 1 == 1 ]; then #KNOWN_TXT_EXTNS
+  #
+  echo "Pre-Processing the TXT's: ${KNOWN_TXT_EXTNS}"
   #
   cat ${PREFNAME}.4.txt | while read thisfile; do
-    echo "${thisfile}"
+    #
+    echo -e "\n==== Sorting: ${thisfile}"
+    #
+    # sort files depending on known extension types
+    # this is because different file-extn-types require different comment-chars
+    #
+    thisbasename=$(basename -- "${thisfile}")
+    thisextension="${thisbasename##*.}"
+    thisfilename="${thisbasename%.*}"
+    #
+    # we add a 'space' before & after the extn to ensure a complete match of file-extn
+    # else, "vhd" =~ "h" is TRUE(bad), but "vhd " =~ "h " is FALSE(GOOD)
+    #
+    if   [[ " vhd \| vhdl " =~ " ${thisextension} " ]]; then
+      # will use "--" for the comment-block
+      echo "${thisfile}" >> ${PREFNAME}.4.txt.dashdash
+      :
+    elif [[ " c \| h \| v \| vh \| asm " =~ " ${thisextension} " ]]; then
+      # will use "//" for the comment-block
+      echo "${thisfile}" >> ${PREFNAME}.4.txt.slashslash
+      :
+    elif [[ " a65 \| inc \| s " =~ " ${thisextension} " ]]; then
+      # will use "; " for the comment-block
+      echo "${thisfile}" >> ${PREFNAME}.4.txt.semicolonspace
+      :
+    else
+      echo "WARNING - this is a file we dont know what to do with, and we will NOT process it"
+      echo "${thisfile} basename=${thisbasename} extension=${thisextension} filename=${thisfilename}"
+      echo "${thisfile}" >> ${PREFNAME}.4.txt.unk
+    fi
+    #
+    echo "==== File sorted."
+
+    # check if the file already has some kind of license/copyright
+    if [[ "$(grep -i 'copyright\|licence' ${thisfile} | wc -l)" -ne "0" ]]; then
+      echo    "${thisfile} has some kind of existing copyright/license"
+      echo "${thisfile}" >> ${PREFNAME}.5.hasCopyLic
+    fi
+    #
   done
-  echo " "
-fi
+
+  # now continue below and do the actual processing of the sorted files.
+
+  #
+  ###################
+  ################### txt / dashdash
+  ###################
+  ###################
+  #
+  # construct the LICENSEHEADER & LICENSEFOOTER templates (specific to comment-type)
+  #
+  LICENSEHEADER_TXT_DASH="--\n-- SPDX-FileCopyrightText: 2020 MEGA\n--\n-- Contributors:"
+  LICENSEFOOTER_TXT_DASH="--\n-- SPDX-License-Identifier: LGPL-3.0-or-later\n--\n"
+  LICENSECOMMEN_TXT_DASH="-- "
+  #
+  cat ${PREFNAME}.4.txt.dashdash | while read thisfile; do
+    echo -e "\n==== Processing dashdash: ${thisfile}"
+    FN_processFile "${thisfile}" \
+                   "${LICENSEHEADER_TXT_DASH}" \
+                   "${LICENSEFOOTER_TXT_DASH}" \
+                   "${LICENSECOMMEN_TXT_DASH}"
+    #
+    echo "===="
+  done
+  #
+
+  #
+  ###################
+  ################### txt / slashslash
+  ###################
+  ###################
+  #
+  # construct the LICENSEHEADER & LICENSEFOOTER templates (specific to comment-type)
+  #
+  LICENSEHEADER_TXT_SLASH="//\n// SPDX-FileCopyrightText: 2020 MEGA\n//\n// Contributors:"
+  LICENSEFOOTER_TXT_SLASH="//\n// SPDX-License-Identifier: LGPL-3.0-or-later\n//\n"
+  LICENSECOMMEN_TXT_SLASH="// "
+  #
+  cat ${PREFNAME}.4.txt.slashslash | while read thisfile; do
+    echo -e "\n==== Processing slashslash: ${thisfile}"
+    FN_processFile "${thisfile}" \
+                   "${LICENSEHEADER_TXT_SLASH}" \
+                   "${LICENSEFOOTER_TXT_SLASH}" \
+                   "${LICENSECOMMEN_TXT_SLASH}"
+    #
+    echo "===="
+  done
+  #
+
+  #
+  ###################
+  ################### txt / semicolonspace
+  ###################
+  ###################
+  #
+  # construct the LICENSEHEADER & LICENSEFOOTER templates (specific to comment-type)
+  #
+  LICENSEHEADER_TXT_SEMICOLON=";\n;  SPDX-FileCopyrightText: 2020 MEGA\n;\n;  Contributors:"
+  LICENSEFOOTER_TXT_SEMICOLON=";\n;  SPDX-License-Identifier: LGPL-3.0-or-later\n;\n"
+  LICENSECOMMEN_TXT_SEMICOLON="; "
+  #
+  cat ${PREFNAME}.4.txt.semicolonspace | while read thisfile; do
+    echo -e "\n==== Processing semicolon: ${thisfile}"
+    FN_processFile "${thisfile}" \
+                   "${LICENSEHEADER_TXT_SEMICOLON}" \
+                   "${LICENSEFOOTER_TXT_SEMICOLON}" \
+                   "${LICENSECOMMEN_TXT_SEMICOLON}"
+    #
+    echo "===="
+  done
+  #
+
+  #
+#
+fi #KNOWN_TXT_EXTNS
 
 ###################################################
 ###################################################
