@@ -156,12 +156,11 @@ cat ${PREFNAME}.3.trimmed | while read thisfile; do
   #
 done;
 
-# DEBUG, print some stats
-NUMTXT="$(cat ${PREFNAME}.4.txt | wc -l)" && echo "Number of TXT: ${NUMTXT} "
-NUMBIN="$(cat ${PREFNAME}.4.bin | wc -l)" && echo "Number of BIN: ${NUMBIN} "
-NUMSCR="$(cat ${PREFNAME}.4.scr | wc -l)" && echo "Number of SCR: ${NUMSCR} "
-NUMUNK="$(cat ${PREFNAME}.4.unk | wc -l)" && echo "Number of UNK: ${NUMUNK} "
-echo " "
+# DEBUG, record some stats and print out at the end of the script
+NUMTXT="$(cat ${PREFNAME}.4.txt | wc -l)" && echo "Number of TXT: ${NUMTXT} " >  ${PREFNAME}.6.stats
+NUMBIN="$(cat ${PREFNAME}.4.bin | wc -l)" && echo "Number of BIN: ${NUMBIN} " >> ${PREFNAME}.6.stats
+NUMSCR="$(cat ${PREFNAME}.4.scr | wc -l)" && echo "Number of SCR: ${NUMSCR} " >> ${PREFNAME}.6.stats
+NUMUNK="$(cat ${PREFNAME}.4.unk | wc -l)" && echo "Number of UNK: ${NUMUNK} " >> ${PREFNAME}.6.stats
 
 ###################################################
 ###################################################
@@ -508,6 +507,11 @@ echo "WARNING, The following files may have an existing copyright/license."
 echo "WARNING, Please check the validity of the MEGA65 copyright/licence before commit"
 echo "from: ${PREFNAME}.5.hasCopyLic"
 cat        "${PREFNAME}.5.hasCopyLic"
+
+
+echo "========"
+echo "Stats are:"
+cat "${PREFNAME}.6.stats"
 
 
 echo ""
