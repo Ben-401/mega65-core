@@ -13,6 +13,15 @@
 # (ie by adding copyright and license information)
 # to each file in the mega65-core repo.
 
+# Three modes exist, please modify to suit.
+# (only one enabled at a time, is best to allow review of results)
+#
+#LICMODE="TXT"
+LICMODE="BIN"
+#LICMODE="SCR"
+
+
+
 # This script has only one function
 #
 function FN_processFile {
@@ -65,6 +74,7 @@ function FN_processFile {
   # remove temporary files
   rm "${thisfile}.temp.contrib"
 
+# remove/comment the lines below after DRYRUN
   git reset    "${thisfile}"
   git checkout "${thisfile}"
 
@@ -177,7 +187,7 @@ NUMUNK="$(cat ${PREFNAME}.4.unk | wc -l)" && echo "Number of UNK: ${NUMUNK} " >>
 ###################################################
 ###################################################
 
-if [ 1 == 1 ]; then #KNOWN_TXT_EXTNS
+if [ "${LICMODE}" == "TXT" ]; then #KNOWN_TXT_EXTNS
   #
   echo "Pre-Processing the TXT's: ${KNOWN_TXT_EXTNS}"
   #
@@ -303,9 +313,15 @@ fi #KNOWN_TXT_EXTNS
 ###################################################
 ###################################################
 
-if [ 1 == 1 ]; then #KNOWN_BIN_EXTNS
+if [ "${LICMODE}" == "BIN" ]; then #KNOWN_BIN_EXTNS
   #
   echo "Processing the BIN's: ${KNOWN_BIN_EXTNS}"
+  #
+  # construct the LICENSEHEADER & LICENSEFOOTER templates (specific to BIN-files)
+  # we could use just plain text, but will use HASH prepended to each line as in the SCRs)
+  #
+  LICENSEHEADER_BIN="#\n# SPDX-FileCopyrightText: 2020 MEGA\n#\n# Contributors:"
+  LICENSEFOOTER_BIN="#\n# SPDX-License-Identifier: LGPL-3.0-or-later\n#"
   #
   cat ${PREFNAME}.4.bin | while read thisfile; do
     #
@@ -314,14 +330,8 @@ if [ 1 == 1 ]; then #KNOWN_BIN_EXTNS
     # For the BIN-files, we add a "filename.license"-file containing the LICENSE info
     #
 
-    # construct the LICENSEHEADER & LICENSEFOOTER templates (specific to BIN-files)
-    # we could use just plain text, but will use HASH prepended to each line as in the SCRs)
-    #
-    LICENSEHEADER_BIN="#\n# SPDX-FileCopyrightText: 2020 MEGA\n#\n# Contributors:"
-    LICENSEFOOTER_BIN="#\n# SPDX-License-Identifier: LGPL-3.0-or-later\n#"
-    #
-
     # check if the file already has some kind of license/copyright
+    # doesnt really make sense on JPGs, but do it anyway for all BINs
     if [[ "$(grep -i 'copyright\|licence' ${thisfile} | wc -l)" -ne "0" ]]; then
       echo    "${thisfile} has some kind of existing copyright/license"
       echo "${thisfile}" >> ${PREFNAME}.5.hasCopyLic
@@ -366,6 +376,7 @@ if [ 1 == 1 ]; then #KNOWN_BIN_EXTNS
     # remove temporary files
     rm "${thisfile}.temp.contrib"
 
+# remove/comment the lines below after DRYRUN
     git reset "${thisfile}.license"
     rm -f     "${thisfile}.license"
 
@@ -382,25 +393,26 @@ fi #KNOWN_BIN_EXTNS
 ###################################################
 ###################################################
 
-if [ 1 == 1 ]; then #KNOWN_SCR_EXTNS
+if [ "${LICMODE}" == "SCR" ]; then #KNOWN_SCR_EXTNS
   #
   echo "Processing the SCR's: ${KNOWN_SCR_EXTNS}"
   #
   # For the SCRipt files, we add the LICENSEHEADER to the top of the file,
   # but below the hashbang (if it exists)
   #
+
+  # construct the LICENSEHEADER & LICENSEFOOTER templates (specific to SCR-files)
+  # seems HASH can be used for the comment as files are python/bash/etc
+  #
+  LICENSEHEADER_SCR="#\n# SPDX-FileCopyrightText: 2020 MEGA\n#\n# Contributors:"
+  LICENSEFOOTER_SCR="#\n# SPDX-License-Identifier: LGPL-3.0-or-later\n#\n" # has extra CR
+
   cat ${PREFNAME}.4.scr | while read thisfile; do
     #
     echo -e "\n==== Processing: ${thisfile}"
     #
     # For the SCR-files, we append the LICENSE-info to the top of the file,
     # but below the HASHBANG (if it exists)
-
-    # construct the LICENSEHEADER & LICENSEFOOTER templates (specific to SCR-files)
-    # seems HASH can be used for the comment as files are python/bash/etc
-    #
-    LICENSEHEADER_SCR="#\n# SPDX-FileCopyrightText: 2020 MEGA\n#\n# Contributors:"
-    LICENSEFOOTER_SCR="#\n# SPDX-License-Identifier: LGPL-3.0-or-later\n#\n" # has extra CR
 
     # check if the file already has some kind of license/copyright
     if [[ "$(grep -i 'copyright\|licence' ${thisfile} | wc -l)" -ne "0" ]]; then
@@ -477,6 +489,7 @@ if [ 1 == 1 ]; then #KNOWN_SCR_EXTNS
     # remove temporary files
     rm "${thisfile}.temp.contrib"
 
+# remove/comment the lines below after DRYRUN
     git reset    "${thisfile}"
     git checkout "${thisfile}"
 
@@ -528,3 +541,13 @@ echo "The Ende."
 
 
 
+
+#The following files have no copyright and licensing information:
+#* .gitignore1
+#* .gitmodules
+#* 65xx_and_c64_docs/cpu_internals.txt
+#* assets/matrix_banner.txt
+#* iomap.txt
+#* src/keyboard.txt
+#* src/tests/vicii.cfg
+#* testprocedure_in.tex
